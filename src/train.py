@@ -4,8 +4,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import os
+from PIL import Image
 
-BATCH_SIZE = 32
+from tensorflow.python.ops.gen_math_ops import equal
+
+BATCH_SIZE = 8
 
 face_data = tf.data.Dataset.from_tensor_slices(np.load("data/data.npy")).shuffle(10000).batch(BATCH_SIZE)
 
@@ -105,34 +108,21 @@ def train_step(batch):
     dis_optimizer.apply_gradients(zip(dis_grad, discriminator.trainable_variables))
 
 sample_noise = tf.random.normal((16,100))
-samples = []
 def train(epochs, savelocation):
-    os.mkdir("out/{}".format(savelocation))
+    os.makedirs("out/{}".format(savelocation), exist_ok=True)
     for epoch in range (epochs):
         start = time.time()
         for batch in face_data:
             train_step(batch)
         #save sample
         sample = generator(sample_noise)
-        figure = plt.figure(figsize=(4,4))
-        for i in range(1,17):
-            plt.subplot(4,4,i)
-            plt.imshow(sample[i-1]*128-128)
-            plt.axis('off')
-        plt.savefig("out/{}/{:04d}.png".format(savelocation, epoch))
-        plt.close()
+        patch = Image.new("RGB", (512, 512))
+        for x in range(4):
+            for y in range(4):
+                im = Image.fromarray((sample[x+y*4].numpy()*128+128).astype("uint8"), "RGB")
+                patch.paste(im=im, box = (x*128, y*128))
+        patch.save("out/{}/{:04d}.png".format(savelocation, epoch))
         print("finished epoch {} in time {}".format(epoch+1, time.time() - start))
-
-
-def save():
-    for index, sample in enumerate(samples):
-        figure = plt.figure(figsize=(4,4))
-        for i in range(1,17):
-            plt.subplot(4,4,i)
-            plt.imshow(sample[i-1]*128-128)
-            plt.axis('off')
-        print("out/{:04d}.png".format(index))
-        plt.savefig("out/{:04d}.png".format(index))
 
 
     
